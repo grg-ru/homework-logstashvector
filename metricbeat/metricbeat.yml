@@ -1,0 +1,35 @@
+metricbeat.modules:
+  - module: system
+    period: 10s
+    metricsets:
+      - cpu
+      - load
+      - memory
+      - network
+      - process
+      - process_summary
+      - filesystem
+      - fsstat
+    processes: ['.*']
+
+  - module: nginx
+    period: 10s
+    hosts: ["http://nginx"]
+    server_status_path: /nginx_status
+
+  - module: mysql
+    period: 10s
+    hosts: ["${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(db:3306)/"]
+    metricsets:
+      - status
+
+processors:
+  - add_host_metadata: ~
+  - add_docker_metadata:
+      host: unix:///var/run/docker.sock
+
+setup.kibana:
+  host: http://kibana:5601
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]

@@ -1,0 +1,18 @@
+heartbeat.monitors:
+  - type: http
+    id: cms-http
+    name: CMS HTTP
+    schedule: '@every 10s'
+    urls: ["http://nginx"]
+
+  - type: tcp
+    id: mysql-tcp
+    name: MySQL TCP
+    schedule: '@every 10s'
+    hosts: ["db:3306"]
+
+setup.kibana:
+  host: http://kibana:5601
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]

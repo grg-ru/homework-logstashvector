@@ -1,0 +1,51 @@
+sources:
+  docker_logs:
+    type: docker_logs
+    include_containers:
+      - nginx
+      - php-fpm
+      - mysql
+
+transforms:
+  parse_logs:
+    type: remap
+    inputs:
+      - docker_logs
+    source: |
+      .service = .container_name
+      del(.label)
+      if .container_name == "nginx" {
+        parsed, err = parse_regex(.message, r'^(?P<client_ip>\S+) - (?P<user_name>\S+) \[(?P<nginx_time>[^\]]+)\] "(?P<http_method>\S+) (?P<url_original>[^ ]+) HTTP/(?P<http_version>[^"]+)" (?P<status_code>\d+) (?P<body_bytes>\d+) "(?P<referrer>[^"]*)" "(?P<user_agent>[^"]*)"')
+        if err == null {
+          . = merge(., parsed)
+          .status_code = to_int!(.status_code)
+          .body_bytes = to_int!(.body_bytes)
+        }
+      } else if .container_name == "mysql" {
+        parsed, err = parse_regex(.message, r'^(?P<mysql_time>\d{4}-\d{2}-\d{2}T[^ ]+) (?P<mysql_thread_id>\d+) \[(?P<level>[^\]]+)\] \[(?P<mysql_subsystem>[^\]]+)\] (?P<mysql_message>.*)$')
+        if err == null {
+          . = merge(., parsed)
+        } else {
+          .mysql_message = .message
+        }
+      } else if .container_name == "php-fpm" {
+        parsed, err = parse_regex(.message, r'^\[(?P<php_fpm_time>[^\]]+)\] (?P<level>\w+): (?P<php_fpm_message>.*)$')
+        if err == null {
+          . = merge(., parsed)
+        } else {
+          .php_fpm_message = .message
+        }
+      }
+
+sinks:
+  elasticsearch:
+    type: elasticsearch
+    inputs:
+      - parse_logs
+    endpoints:
+      - http://elasticsearch:9200
+    healthcheck:
+      enabled: false
+    mode: bulk
+    bulk:
+      index: vector-cms-%Y.%m.%d

@@ -1,0 +1,51 @@
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        - condition:
+            contains:
+              docker.container.name: nginx
+          config:
+            - type: filestream
+              id: nginx-container-logs
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              parsers:
+                - container: ~
+              fields:
+                service: nginx
+        - condition:
+            contains:
+              docker.container.name: php-fpm
+          config:
+            - type: filestream
+              id: php-fpm-container-logs
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              parsers:
+                - container: ~
+              fields:
+                service: php-fpm
+        - condition:
+            contains:
+              docker.container.name: mysql
+          config:
+            - type: filestream
+              id: mysql-container-logs
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              parsers:
+                - container: ~
+              fields:
+                service: mysql
+
+processors:
+  - add_docker_metadata:
+      host: unix:///var/run/docker.sock
+
+setup.kibana:
+  host: http://kibana:5601
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]

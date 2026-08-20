@@ -1,0 +1,26 @@
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      templates:
+        - condition:
+            or:
+              - equals:
+                  docker.container.name: nginx
+              - equals:
+                  docker.container.name: php-fpm
+              - equals:
+                  docker.container.name: mysql
+          config:
+            - type: filestream
+              id: cms-container-${data.docker.container.id}
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              parsers:
+                - container: ~
+
+processors:
+  - add_docker_metadata:
+      host: unix:///var/run/docker.sock
+
+output.logstash:
+  hosts: ["logstash:5044"]
